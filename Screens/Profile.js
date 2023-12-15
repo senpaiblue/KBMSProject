@@ -8,75 +8,140 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { ArrowLeftCircleIcon } from "react-native-heroicons/solid";
 import { CameraIcon } from "react-native-heroicons/solid";
 import { LinearGradient } from "expo-linear-gradient";
 import CustomPlaceholder from "../Components/CustomPlaceHolder";
 import CustomRadioButton from "../Components/CustomRadioButton";
-import ProfilePicturePicker from "../Components/ProfilePicturePicker";
-import { launchCamera, launchImageLibrary } from "react-native-image-picker";
+import * as ImagePicker from 'expo-image-picker';
 
 
-var { width, height } = Dimensions.get("window");
-const ios = Platform.OS == "ios";
+
+const ProfilePicturePicker = ({ profilePicture, onSelectImage }) => {
+  const [mediaLibraryPermission, setMediaLibraryPermission] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        setMediaLibraryPermission(status === 'granted');
+      }
+    })();
+  }, []);
+
+  const handleImagePicker = async () => {
+    if (!mediaLibraryPermission) {
+      Alert.alert('Permission Denied', 'Please enable media library access in your device settings.');
+      return;
+    }
+
+    const options = {
+      mediaType: 'photo',
+      quality: 1,
+      allowsEditing: true,
+      aspect: [1, 1],
+    };
+
+    const result = await ImagePicker.launchImageLibraryAsync(options);
+
+    if (!result.cancelled) {
+      onSelectImage(result.uri);
+    }
+  };
+
+  return (
+    <View>
+      <TouchableOpacity onPress={handleImagePicker}>
+        {profilePicture ? (
+          <Image source={{ uri: profilePicture }} className="w-full h-full rounded-full" />
+        ) : (
+          <LinearGradient
+            colors={['#D9D9D9', 'rgba(217, 217, 217, 0.00)']}
+            style={{ width: '100%', height: '100%', borderRadius: 50 }}
+          />
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+var { width, height } = Dimensions.get('window');
+const ios = Platform.OS === 'ios';
+
 export default function Profile() {
   const [profilePicture, setProfilePicture] = useState(null);
-  const [username, setUsername] = useState("Username");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState('Username');
+  const [email, setEmail] = useState('');
   const [TimeofBirth, setTimeofBirth] = useState(new Date());
   const handleTimeOfBirthChange = (date) => {
     setTimeofBirth(date);
   };
-  const [AlternateNo, setAlternateNo] = useState("");
-  const [Gender, setGender] = useState("<");
+  const [AlternateNo, setAlternateNo] = useState('');
+  const [Gender, setGender] = useState('<');
 
-  const handleImagePicker = () => {
+  const handleImagePicker = async () => {
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Please enable media library access in your device settings.');
+        return;
+      }
+    }
+
     const options = {
-      title: "Select Profile Picture",
-      cancelButtonTitle: "Cancel",
-      takePhotoButtonTitle: "Take Photo",
-      chooseFromLibraryButtonTitle: "Choose from Library",
-      mediaType: "photo",
-      storageOptions: {
-        skipBackup: true,
-        path: "images",
-      },
+      mediaType: 'photo',
+      quality: 1,
+      allowsEditing: true,
+      aspect: [1, 1],
     };
 
-    ImagePicker.showImagePicker(options, (response) => {
-      if (response.didCancel) {
-        // User canceled the image picker
-      } else if (response.error) {
-        // Error occurred while picking the image
-        Alert.alert("Error", response.error);
-      } else {
-        // Image successfully picked or taken
-        setProfilePicture(response.uri);
-      }
-    });
+    const result = await ImagePicker.launchImageLibraryAsync(options);
+
+    if (!result.cancelled) {
+      setProfilePicture(result.uri);
+    }
   };
 
   const handleCameraIconPress = () => {
     Alert.alert(
-      "Choose an action",
-      "",
+      'Edit Profile',
+      '',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Take Photo",
-          onPress: () =>
-            launchCamera({ mediaType: "photo" }, handleImagePicker),
+          text: 'Camera',
+          onPress: () => handleCamera(),
         },
         {
-          text: "Choose from Library",
-          onPress: () =>
-            launchImageLibrary({ mediaType: "photo" }, handleImagePicker),
+          text: 'Gallery',
+          onPress: () => handleImagePicker(),
         },
       ],
       { cancelable: false }
     );
+  };
+
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Please enable camera access in your device settings.');
+      return;
+    }
+
+    const options = {
+      mediaType: 'photo',
+      quality: 1,
+      allowsEditing: true,
+      aspect: [1, 1],
+    };
+
+    const result = await ImagePicker.launchCameraAsync(options);
+
+    if (!result.cancelled) {
+      setProfilePicture(result.uri);
+    }
   };
   return (
     <View className="bg-[#1B1B1B] flex justify-start h-[100%]">
@@ -97,10 +162,7 @@ export default function Profile() {
             <CameraIcon size="28" color="white" />
           </TouchableOpacity>
           <View className=" absolute z-10 items-center justify-center overflow-hidden w-48 h-48 border-2 border-gray-400 rounded-full ">
-            <ProfilePicturePicker
-              profilePicture={profilePicture}
-              onSelectImage={handleImagePicker}
-            />
+          <ProfilePicturePicker profilePicture={profilePicture} onSelectImage={setProfilePicture} />
             <LinearGradient
               colors={["#D9D9D9", "rgba(217, 217, 217, 0.00)"]}
               style={{ width, height: height * 0.41 }}
